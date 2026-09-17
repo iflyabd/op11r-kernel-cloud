@@ -1,0 +1,83 @@
+name: OP11R kernel cloud build
+
+on:
+  workflow_dispatch:
+
+env:
+  JOBS: 4
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout build repo
+        uses: actions/checkout@v4
+
+      - name: Install toolchain + deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential gcc-aarch64-linux-gnu \
+            clang lld llvm make bc bison flex \
+            libssl-dev libelf-dev cpio dwarves \
+            python3 git ccache zip unzip curl lz4
+          sudo ln -sf /usr/bin/python3 /usr/bin/python
+          aarch64-linux-gnu-gcc --version | head -n 1
+          clang --version | head -n 1
+          ccache --version | head -n 1
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: op11r-ccache-${{ hashFiles('configs/additive-rtl-bt-otg.fragment') }}
+          restore-keys: op11r-ccache-
+
+      - name: Build kernel + modules
+        run: |
+          export CCACHE_DIR=$HOME/.ccache
+          ccache -z || true
+          bash scripts/cloud-build.sh
+          ccache -s || true
+
+      - name: Assemble Magisk module zip
+        if: success()
+        run: |
+          MOD=artifacts/magisk
+          rm -rf $MOD && mkdir -p $MOD/vendor/lib/modules $MOD/lib/firmware
+          cp -r magisk-module/META-INF magisk-module/etc magisk-module/module.prop magisk-module/post-finit.sh $MOD/
+          cp artifacts/modules/*.ko $MOD/vendor/lib/modules/
+          cp -r artifacts/firmware/* $MOD/lib/firmware/
+          ( cd $MOD && zip -r -X ../magisk-op11r-wifi-bt.zip . -x ".*" )
+          ls -lh artifacts/magisk-op11r-wifi-bt.zip
+
+      - name: Upload kernel image
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: op11r-Image
+          path: |
+            artifacts/Image
+            artifacts/Image.gz
+          retention-days: 14
+
+      - name: Upload modules + Magisk zip
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: op11r-modules-magisk
+          path: |
+            artifacts/modules/
+            artifacts/Module.symvers
+            artifacts/.config
+            artifacts/magisk-op11r-wifi-bt.zip
+          retention-days: 14
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: op11r-build-log
+          path: build.log
+          retention-days: 14

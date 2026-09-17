@@ -1,0 +1,9 @@
+out-msm/
+src/
+artifacts/
+build.log
+*.o
+*.ko
+*.order
+*.symvers
+.cache/
