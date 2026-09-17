@@ -30,6 +30,9 @@ export CLANG_TRIPLE=aarch64-linux-gnu-
 export CC="ccache clang"
 export LD=ld.lld
 export KCFLAGS="-w -Wno-error"
+# REQUIRED with LLVM/LD=ld.lld: host kconfig/conf links via lld, which has no
+# legacy bcmp — same workaround as the proven on-device container flow.
+export HOSTCFLAGS="-Dbcmp=memcmp -D__KBUILD_HOSTBUILD__ -include $ROOT/build/host-compat.h"
 export PYTHON=python3
 export CCACHE_BASEDIR="$ROOT"
 export CCACHE_DIR="${CCACHE_DIR:-$HOME/.ccache}"
@@ -58,7 +61,8 @@ cd "$KDIR"
 ./scripts/config --file "$OUT/.config" --enable CONFIG_WLAN_VENDOR_MEDIATEK
 ./scripts/config --file "$OUT/.config" --module CONFIG_MT7601U
 ./scripts/config --file "$OUT/.config" --set-str CONFIG_UNUSED_KSYMS_WHITELIST "$ROOT/build/abi_symbollist.raw"
-make O="$OUT" olddefconfig 2>&1 | tail -n 3
+make O="$OUT" olddefconfig 2>&1 | tee -a "$LOG" | tail -n 20
+test "${PIPESTATUS[0]}" -eq 0 || { echo "[!] olddefconfig failed (see $LOG)"; exit 1; }
 
 echo "[*] Verifying config..."
 for k in CONFIG_DM_VERITY CONFIG_SECURITY_SELINUX CONFIG_BT CONFIG_USB_DWC3 \
@@ -81,7 +85,8 @@ echo "[+] Image.gz: $(du -h "$OUT/arch/arm64/boot/Image.gz" | cut -f1)"
 echo "[*] Building out-of-tree 88x2bu..."
 cd "$ROOT/drivers-out/rtl88x2bu-cilynx"
 make KSRC="$OUT" ARCH=arm64 R_ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
-  LLVM=1 LLVM_IAS=1 KCFLAGS="-w -Wno-error" -j"$JOBS" 2>&1 | tail -n 5
+  LLVM=1 LLVM_IAS=1 KCFLAGS="-w -Wno-error" -j"$JOBS" 2>&1 | tee -a "$LOG" | tail -n 10
+test "${PIPESTATUS[0]}" -eq 0 || { echo "[!] 88x2bu build failed (see $LOG)"; exit 1; }
 find . -name "88x2bu.ko" | head -n 3
 
 # --- verify gates ---
