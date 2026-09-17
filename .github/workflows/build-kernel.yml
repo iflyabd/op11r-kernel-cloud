@@ -27,6 +27,14 @@ jobs:
           clang --version | head -n 1
           ccache --version | head -n 1
 
+      - name: Add swap for Full-LTO link
+        # vmlinux.o Full-LTO link peaks >16GB (proven by OOM heartbeat);
+        # on-device build survived via 8GB swap. Zero config deviation.
+        run: |
+          sudo fallocate -l 16G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1G count=16
+          sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+          free -h
+
       - name: Restore ccache
         uses: actions/cache@v4
         with:
