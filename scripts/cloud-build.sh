@@ -52,6 +52,62 @@ clone_sha https://github.com/OnePlusOSS/android_kernel_oneplus_sm8475.git "$MSM_
 clone_sha https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8475.git "$MODS_SHA" "$SRC/mods"
 ln -sfn "$SRC/mods/vendor" "$SRC/vendor"
 
+# --- OnePlus vendor overlay links (proven on-device layout) ---
+# msm-kernel Kconfig/Makefiles reference kernel/oplus_cpu, drivers/soc/oplus/*,
+# etc., which live in mods/vendor/oplus. Recreate the exact overlay symlinks.
+echo "[*] Creating vendor overlay symlinks..."
+while IFS='|' read -r link target; do
+  [ -z "$link" ] && continue
+  mkdir -p "$KDIR/$(dirname "$link")"
+  ln -sfn "$target" "$KDIR/$link"
+done <<'LINKS'
+drivers/android/oplus_binder|../../../../vendor/oplus/kernel/ipc
+drivers/base/kernelFwUpdate|../../../../vendor/oplus/kernel/touchpanel/kernelFwUpdate
+drivers/dma-buf/heaps/oplus_boostpool|../../../../../vendor/oplus/kernel/oplus_performance_5.10/misc/mm_boost_pool/
+drivers/input/oplus_fp_driver|../../../../vendor/oplus/secure/biometrics/fingerprints/bsp/drivers_kernel/component3.0/qcom
+drivers/input/oplus_secure_drivers|../../../../vendor/oplus/secure/common/bsp/drivers
+drivers/input/touchscreen/oplus_touchscreen_v2|../../../../../vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2
+drivers/input/touchscreen/synaptics_hbp|../../../../../vendor/oplus/kernel/touchpanel/synaptics_hbp/
+drivers/input/uff_fp_drivers|../../../../vendor/oplus/secure/biometrics/fingerprints/bsp/uff/driver
+drivers/misc/oplus_procs_load|../../../../vendor/oplus/kernel/power/procs_load/
+drivers/power/oplus|../../../../vendor/oplus/kernel/charger
+drivers/soc/oplus/boot|../../../../../vendor/oplus/kernel/boot
+drivers/soc/oplus/device_info|../../../../../vendor/oplus/kernel/device_info/device_info
+drivers/soc/oplus/dfr|../../../../../vendor/oplus/kernel/dfr
+drivers/soc/oplus/dft|../../../../../vendor/oplus/kernel/dft
+drivers/soc/oplus/hans|../../../../../vendor/oplus/kernel/hans
+drivers/soc/oplus/mdmfeature|../../../../../vendor/oplus/hardware/radio/kernel/mdmfeature
+drivers/soc/oplus/mdmrst|../../../../../vendor/oplus/hardware/radio/mdmrst/common
+drivers/soc/oplus/multimedia|../../../../../vendor/oplus/kernel/multimedia/feedback
+drivers/soc/oplus/oplus_consumer_ir|../../../../../vendor/oplus/sensor/kernel/oplus_consumer_ir
+drivers/soc/oplus/power|../../../../../vendor/oplus/kernel/power
+drivers/soc/oplus/sensor|../../../../../vendor/oplus/sensor/kernel/qcom/sensor/
+drivers/soc/oplus/storage|../../../../../vendor/oplus/kernel/storage/storage_feature_in_module
+include/linux/cpufreq_effiency.h|../../kernel/oplus_cpu/cpufreq_effiency/cpufreq_effiency.h
+include/linux/cpufreq_health.h|../../kernel/oplus_cpu/cpufreq_health/cpufreq_health.h
+include/soc/oplus/boot|../../../../../vendor/oplus/kernel/boot/include
+include/soc/oplus/dfr|../../../../../vendor/oplus/kernel/dfr/include
+include/soc/oplus/dft|../../../../../vendor/oplus/kernel/dft/include
+include/soc/oplus/oplus_mm_kevent_fb.h|../../../../../vendor/oplus/kernel/multimedia/feedback/oplus_mm_kevent_fb.h
+include/soc/oplus/touchpanel_event_notify.h|../../../../../vendor/oplus/kernel/touchpanel/oplus_touchscreen_v2/touchpanel_notify/touchpanel_event_notify.h
+kernel/locking/oplus_locking|../../../../vendor/oplus/kernel/synchronize
+kernel/oplus_cpu|../../../vendor/oplus/kernel/cpu
+kernel/sched/walt/oem_sched|../../oplus_cpu/misc/sched_assist
+kernel/sched/walt/tuning|../../../../../vendor/oplus/kernel/oplus_performance_5.10/misc/sched_input_boost/
+mm/oplus_mm|../../../vendor/oplus/kernel/mm
+net/oplus_modules|../../../vendor/oplus/kernel/network
+LINKS
+missing=0
+while IFS='|' read -r link target; do
+  [ -z "$link" ] && continue
+  if [ ! -e "$KDIR/$link" ]; then echo "[!] overlay target missing: $link -> $target"; missing=1; fi
+done <<'LINKS'
+kernel/oplus_cpu|../../../vendor/oplus/kernel/cpu
+kernel/oplus_cpu/sched/Kconfig|../../../vendor/oplus/kernel/cpu/sched/Kconfig
+LINKS
+test "$missing" -eq 0 || exit 1
+echo "[+] overlay links OK"
+
 # --- config: stock base + additive fragment (has MT7601U/BT/NAT) ---
 echo "[*] Applying config..."
 mkdir -p "$OUT"
