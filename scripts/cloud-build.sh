@@ -141,6 +141,13 @@ for k in CONFIG_MT7601U CONFIG_WLAN_VENDOR_MEDIATEK CONFIG_CFG80211 CONFIG_MAC80
   echo "  [OK] $(grep -E "^$k=" "$OUT/.config")"
 done
 
+# --- built-in firmware: EXTRA_FIRMWARE_DIR=/lib/firmware means kbuild takes
+# blobs from the HOST /lib/firmware (same as proven container flow) ---
+echo "[*] Installing built-in firmware to host /lib/firmware..."
+sudo mkdir -p /lib/firmware/rtl_bt
+sudo cp "$ROOT/firmware/rtl_bt/"* /lib/firmware/rtl_bt/
+ls -la /lib/firmware/rtl_bt/
+
 # --- kernel + in-tree modules ---
 echo "[*] Building Image.gz + modules..."
 make O="$OUT" -j"$JOBS" Image.gz modules 2>&1 | tee -a "$LOG"
