@@ -31,8 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: op11r-ccache-${{ hashFiles('configs/additive-rtl-bt-otg.fragment') }}
+          key: op11r-ccache-${{ hashFiles('configs/additive-rtl-bt-otg.fragment', 'patches/msm-kernel-fixes.patch') }}
           restore-keys: op11r-ccache-
+          save-always: true
 
       - name: Build kernel + modules
         run: |

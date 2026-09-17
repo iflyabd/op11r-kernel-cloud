@@ -23,6 +23,11 @@ MODS_SHA="46ba2a7ace39ba653f3f9cc92fdc5af16a771d7e"
 echo "[*] OP11R cloud build | jobs=$JOBS | root=$ROOT"
 date -u | tee "$LOG"
 
+# Heartbeat: LTO link prints nothing for 10+ min; prove we're alive + watch RAM.
+heartbeat() { while sleep 120; do echo "[hb] $(date -u) mem=$(free -m | awk '/^Mem:/{print $3"/"$2"MB"}') disk_free=$(df -h "$ROOT" | awk 'END{print $4}')"; done; }
+heartbeat & HB=$!
+trap 'kill $HB 2>/dev/null || true' EXIT
+
 # --- toolchain env (matches proven container flow) ---
 export ARCH=arm64 SUBARCH=arm64 LLVM=1 LLVM_IAS=1
 export CROSS_COMPILE=aarch64-linux-gnu-
