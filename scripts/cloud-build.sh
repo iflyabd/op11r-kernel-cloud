@@ -54,6 +54,13 @@ clone_sha https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_on
 # KDIR/kernel resolves to $ROOT/vendor (NOT $ROOT/src/vendor).
 ln -sfn "$SRC/mods/vendor" "$ROOT/vendor"
 
+# --- kernel-code fixes (documented, stock-intent; working tree carries them too) ---
+echo "[*] Applying kernel-code patches..."
+git -C "$KDIR" apply --check "$ROOT/patches/msm-kernel-fixes.patch" \
+  || { echo "[!] patch check failed"; exit 1; }
+git -C "$KDIR" apply "$ROOT/patches/msm-kernel-fixes.patch"
+echo "[+] patches applied"
+
 # --- OnePlus vendor overlay links (proven on-device layout) ---
 # msm-kernel Kconfig/Makefiles reference kernel/oplus_cpu, drivers/soc/oplus/*,
 # etc., which live in mods/vendor/oplus. Recreate the exact overlay symlinks.
@@ -118,6 +125,7 @@ cat "$ROOT/configs/additive-rtl-bt-otg.fragment" >> "$OUT/.config"
 cd "$KDIR"
 ./scripts/config --file "$OUT/.config" --enable CONFIG_WLAN_VENDOR_MEDIATEK
 ./scripts/config --file "$OUT/.config" --module CONFIG_MT7601U
+./scripts/config --file "$OUT/.config" --disable CONFIG_OPLUS_FEATURE_SENSOR_CFG
 ./scripts/config --file "$OUT/.config" --set-str CONFIG_UNUSED_KSYMS_WHITELIST "$ROOT/build/abi_symbollist.raw"
 make O="$OUT" olddefconfig 2>&1 | tee -a "$LOG" | tail -n 20
 test "${PIPESTATUS[0]}" -eq 0 || { echo "[!] olddefconfig failed (see $LOG)"; exit 1; }
@@ -143,7 +151,8 @@ echo "[+] Image.gz: $(du -h "$OUT/arch/arm64/boot/Image.gz" | cut -f1)"
 echo "[*] Building out-of-tree 88x2bu..."
 cd "$ROOT/drivers-out/rtl88x2bu-cilynx"
 make KSRC="$OUT" ARCH=arm64 R_ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
-  LLVM=1 LLVM_IAS=1 KCFLAGS="-w -Wno-error" -j"$JOBS" 2>&1 | tee -a "$LOG" | tail -n 10
+  LLVM=1 LLVM_IAS=1 KCFLAGS="-w -Wno-error" EXTRA_CFLAGS="-w" \
+  CONFIG_WIFI_MONITOR=y -j"$JOBS" 2>&1 | tee -a "$LOG" | tail -n 10
 test "${PIPESTATUS[0]}" -eq 0 || { echo "[!] 88x2bu build failed (see $LOG)"; exit 1; }
 find . -name "88x2bu.ko" | head -n 3
 
