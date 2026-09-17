@@ -50,7 +50,9 @@ mkdir -p "$SRC"
 clone_sha https://github.com/OnePlusOSS/android_kernel_common_oneplus_sm8475.git "$COMMON_SHA" "$SRC/common"
 clone_sha https://github.com/OnePlusOSS/android_kernel_oneplus_sm8475.git "$MSM_SHA" "$SRC/msm-kernel"
 clone_sha https://github.com/OnePlusOSS/android_kernel_modules_and_devicetree_oneplus_sm8475.git "$MODS_SHA" "$SRC/mods"
-ln -sfn "$SRC/mods/vendor" "$SRC/vendor"
+# Container parity: KDIR=$ROOT/src/msm-kernel, so ../../../vendor from
+# KDIR/kernel resolves to $ROOT/vendor (NOT $ROOT/src/vendor).
+ln -sfn "$SRC/mods/vendor" "$ROOT/vendor"
 
 # --- OnePlus vendor overlay links (proven on-device layout) ---
 # msm-kernel Kconfig/Makefiles reference kernel/oplus_cpu, drivers/soc/oplus/*,
